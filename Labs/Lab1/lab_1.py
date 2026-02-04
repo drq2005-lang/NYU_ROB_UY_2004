@@ -12,9 +12,9 @@ JOINT_NAME_LEAD = "leg_front_r_3"
 
 ####
 ####
-KP = 0.0  # YOUR KP VALUE
-KI = 0.0 # YOUR KI VALUE
-KD = 0.0  # YOUR KD VALUE
+KP = 1.1 # YOUR KP VALUE
+KI = 0.3 # YOUR KI VALUE
+KD = 0.05  # YOUR KD VALUE
 ####
 ####
 LOOP_RATE = 200  # Hz
@@ -22,7 +22,7 @@ DELTA_T = 1 / LOOP_RATE
 MAX_TORQUE = 2.0
 DEAD_BAND_SIZE = 0.095
 PENDULUM_CONTROL = False
-LEG_TRACKING_CONTROL = False
+LEG_TRACKING_CONTROL = not PENDULUM_CONTROL
 
 
 class JointStateSubscriber(Node):
@@ -47,7 +47,8 @@ class JointStateSubscriber(Node):
         self.joint_vel_lead = 0
         self.target_joint_pos = 0
         self.target_joint_vel = 0
-        # self.torque_history = deque(maxlen=DELAY)
+        self.sum_joint_error = 0
+        #self.torque_history = deque(maxlen=DELAY)
 
         # Create a timer to run control_loop at the specified frequency
         self.create_timer(1.0 / LOOP_RATE, self.control_loop)
@@ -71,8 +72,16 @@ class JointStateSubscriber(Node):
         ####
         #### YOUR CODE HERE
         ####
-        torque = 0
 
+        error = target_joint_pos - joint_pos
+        error_derivative = target_joint_vel - joint_vel
+        
+        if(self.sum_joint_error>0.3):
+            self.sum_joint_error=0.3
+        if(self.sum_joint_error<-0.3):
+            self.sum_joint_error=-0.3
+        self.sum_joint_error += error * DELTA_T
+        torque = error *KP + KD*error_derivative +KI*self.sum_joint_error
 
 
         # Leave this code unchanged
@@ -85,8 +94,7 @@ class JointStateSubscriber(Node):
 
     def print_info(self):
         """Print joint information every 2 control loops"""
-        if True:
-            return
+        
             
         if self.print_counter == 0:
             self.get_logger().info(
